@@ -4,13 +4,16 @@ from datetime import datetime
 from ta.momentum import RSIIndicator
 from ta.trend import MACD, EMAIndicator
 from ta.volatility import BollingerBands
-
+from utils.formatter import format_discord_signal
+from config import OPENROUTER_API_KEY
+import requests
+import json
 # Binance exchange public data
 exchange = ccxt.binance()
 
-def get_technical_analysis(asset="BTC"):
-    symbol = f"{asset.upper()}/USDT"
-    ohlcv = exchange.fetch_ohlcv(symbol, '1h', limit=500)
+def get_technical_analysis(asset="BTC/USDT", interval="15m", is_signal=False):
+    symbol = f"{asset.upper()}"
+    ohlcv = exchange.fetch_ohlcv(symbol, interval, limit=500)
 
     df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
@@ -76,7 +79,7 @@ def get_technical_analysis(asset="BTC"):
 • **24h Volume**: {latest['volume']:.2f} {asset.upper()}
 
 **📈 Indicators:**
-• **RSI (14)**: {latest['RSI']:.2f} - {rsi_signal}
+• **RSI (24)**: {latest['RSI']:.2f} - {rsi_signal}
 • **MACD**: {macd_signal}
 • **Bollinger Bands**: {bb_signal}
 • **Moving Averages**: {ma_signal}
@@ -91,59 +94,79 @@ def get_technical_analysis(asset="BTC"):
 
 *Data from Binance • Generated at {datetime.now().strftime("%H:%M:%S")}*
 """
-    return response
-
-
-def get_trading_signal(asset="BTC"):
-    symbol = f"{asset.upper()}/USDT"
-    ohlcv = exchange.fetch_ohlcv(symbol, '1h', limit=100)
-
-    df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-
-    # RSI
-    rsi_indicator = RSIIndicator(close=df['close'], window=14)
-    df['RSI'] = rsi_indicator.rsi()
-
-    latest = df.iloc[-1]
-    prev = df.iloc[-2]
-
-    if latest['RSI'] < 35 and latest['close'] > prev['close']:
-        direction = "BUY"
-        color = "🟢"
-        base_price = latest['close']
-        entry_min = base_price * 0.995
-        entry_max = base_price * 1.005
-        target = base_price * 1.03
-        stop_loss = base_price * 0.97
-    elif latest['RSI'] > 65 and latest['close'] < prev['close']:
-        direction = "SELL"
-        color = "🔴"
-        base_price = latest['close']
-        entry_min = base_price * 0.995
-        entry_max = base_price * 1.005
-        target = base_price * 0.97
-        stop_loss = base_price * 1.03
+    if is_signal:
+        return df
     else:
-        direction = "HOLD"
-        color = "🟡"
-        base_price = latest['close']
-        entry_min = base_price
-        entry_max = base_price
-        target = base_price
-        stop_loss = base_price
+        return response
 
-    response = f"""
-📈 **Trading Signal for {asset.upper()}**
---------------------------
-{color} **{direction}** Recommendation
-• **Current Price**: ${latest['close']:.2f}
-• **RSI (14)**: {latest['RSI']:.2f}
 
-**Entry**: ${entry_min:.2f} - ${entry_max:.2f}
-**Target**: ${target:.2f}
-**Stop Loss**: ${stop_loss:.2f}
+def get_trading_signal(asset="BTC/USDT"):
+    try:
+        # Get technical data
+        indicators = get_technical_analysis(asset, is_signal=True)
+        latest = indicators.iloc[-1]
+        previous = indicators.iloc[-2]
+        
+        # Prepare technical context
+        technical_context = f"""
+CRYPTO TRADING SIGNAL ANALYSIS FOR {asset.upper()}
 
-*Data from Binance • Generated at {datetime.now().strftime("%H:%M:%S")}*
+CURRENT PRICE: ${latest['close']:.2f}
+24H VOLUME: {latest['volume']:.2f}
+
+TECHNICAL INDICATORS:
+- RSI: {latest['RSI']:.2f} ({'↑' if latest['RSI'] > previous['RSI'] else '↓'})
+- MACD: {latest['MACD']:.6f}, Signal: {latest['MACD_signal']:.6f}
+- Price Position: Between BB {latest['BB_lower']:.2f} - {latest['BB_upper']:.2f}
+- MA Alignment: MA20: {latest['MA20']:.2f}, MA50: {latest['MA50']:.2f}, MA200: {latest['MA200']:.2f}
+
+Provide a trading signal with:
+1. Signal strength (Strong Buy/Buy/Neutral/Sell/Strong Sell)
+2. Entry price suggestion
+3. Stop-loss and take-profit levels
+4. Risk level (High/Medium/Low)
+5. Short-term outlook
+6. Key levels to watch
+
+Format for Discord with clear sections and relevant emojis.
 """
-    return response
+        
+        # Call AI API
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            data=json.dumps({
+                "model": "deepseek/deepseek-chat-v3.1:free",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a professional crypto trading analyst. Provide clear, actionable trading signals with specific levels and risk assessment. Use Discord formatting with emojis and bullet points. Be concise but informative."
+                    },
+                    {
+                        "role": "user",
+                        "content": technical_context
+                    }
+                ],
+                "temperature": 0.7,
+                "max_tokens": 600
+            })
+        )
+        response_data = response.json()
+        
+        # Check if choices exists in response
+        if 'choices' not in response_data:
+            return f"❌ Unexpected API response format: {response_data}"
+        
+        if not response_data['choices']:
+            return "❌ No response generated from AI"
+        
+        ai_response = response_data['choices'][0]['message']['content']
+        
+        # Format for Discord
+        return format_discord_signal(asset, ai_response, indicators)
+        
+    except Exception as e:
+        return f"❌ Error generating signal: {str(e)}"

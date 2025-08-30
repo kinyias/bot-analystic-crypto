@@ -60,8 +60,6 @@ def home():
                     <strong>🟢 {bot_status['status']}</strong>
                 </div>
                 <p><strong>Thời gian hoạt động:</strong> {int(hours)} giờ, {int(minutes)} phút, {int(seconds)} giây</p>
-                <p><strong>Số lệnh đã xử lý:</strong> {bot_status['commands_processed']}</p>
-                <p><strong>Port đang chạy:</strong> 5000</p>
                 <p><strong>Bot ID:</strong> {bot.user.id if bot.user else 'Chưa kết nối'}</p>
             </div>
         </body>
@@ -85,15 +83,15 @@ async def ping(ctx):
     await ctx.send("Pong! 🏓")
 
 @bot.command()
-async def analytic(ctx, asset="BTC"):
+async def analytic(ctx, asset: str = "BTC/USDT", interval: str = "15m"):
     try:
-        response = get_technical_analysis(asset)
+        response = get_technical_analysis(asset,interval)
         await ctx.send(response)
     except Exception as e:
         await ctx.send(f"❌ Error: {str(e)}")
 
 @bot.command()
-async def signal(ctx, asset="BTC"):
+async def signal(ctx, asset: str = "BTC/USDT"):
     try:
         response = get_trading_signal(asset)
         await ctx.send(response)
