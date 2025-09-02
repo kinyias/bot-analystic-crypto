@@ -119,15 +119,22 @@ TECHNICAL INDICATORS:
 - Price Position: Between BB {latest['BB_lower']:.2f} - {latest['BB_upper']:.2f}
 - MA Alignment: MA20: {latest['MA20']:.2f}, MA50: {latest['MA50']:.2f}, MA200: {latest['MA200']:.2f}
 
-Provide a trading signal with:
-1. Signal strength (Strong Buy/Buy/Neutral/Sell/Strong Sell)
-2. Entry price suggestion
-3. Stop-loss and take-profit levels
-4. Risk level (High/Medium/Low)
-5. Short-term outlook
-6. Key levels to watch
+*TRADING SIGNAL
+- Provide a signal **only if multiple indicators align clearly** (e.g., RSI confirmation + MACD crossover + MA trend).
+- If indicators conflict or show sideways movement → output **Neutral**.
+- Signals: Strong Buy / Buy / Neutral / Sell / Strong Sell.
 
-Format for Discord with clear sections and relevant emojis.
+*RULES
+- If Neutral → DO NOT provide entry/exit levels.
+- If Buy/Sell → provide:
+  1. Entry price range suggestion
+  2. Stop-loss and take-profit levels
+  3. Risk level (High/Medium/Low)
+  4. Short-term outlook (Bullish/Bearish/Sideways)
+  5. Key support/resistance levels to watch
+
+Format clearly for Discord with sections and emojis.
+Keep the output concise, no redundant explanations.
 """
         
         # Call AI API
@@ -182,15 +189,22 @@ CRYPTO TRADING SIGNAL ANALYSIS FOR {asset.upper()}
 HERE IS DATA AND TECHNICAL INDICATORS:
 {indicators}
 
-Provide a trading signal with:
-1. Signal strength (Strong Buy/Buy/Neutral/Sell/Strong Sell)
-2. Entry price suggestion
-3. Stop-loss and take-profit levels
-4. Risk level (High/Medium/Low)
-5. Short-term outlook
-6. Key levels to watch
+*TRADING SIGNAL
+- Provide a signal **only if multiple indicators align clearly** (e.g., RSI confirmation + MACD crossover + MA trend, volumn momentum).
+- If indicators conflict or show sideways movement → output **Neutral**.
+- Signals: Strong Buy / Buy / Neutral / Sell / Strong Sell.
 
-Format for Discord with clear sections and relevant emojis.
+*RULES
+- If Neutral → DO NOT provide entry/exit levels.
+- If Buy/Sell → provide:
+  1. Entry price range suggestion
+  2. Stop-loss and take-profit levels
+  3. Risk level (High/Medium/Low)
+  4. Short-term outlook (Bullish/Bearish/Sideways)
+  5. Key support/resistance levels to watch
+
+Format clearly for Discord with sections and emojis.
+Keep the output concise, no redundant explanations.
 """
         
         # Call AI API
