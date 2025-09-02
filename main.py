@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from config import TOKEN
-from services.analytic import get_technical_analysis, get_trading_signal
+from services.analytic import get_technical_analysis, get_trading_signal,get_trading_signal_max, get_trading_signal_smc
 from flask import Flask, jsonify
 import threading
 import time
@@ -79,6 +79,84 @@ async def on_ready():
     print(f"✅ Bot đã đăng nhập thành công với tên {bot.user}")
 
 @bot.command()
+async def bothelp(ctx):
+    """Display bot usage guide"""
+    help_embed = discord.Embed(
+        title="🤖 Trading Bot Help",
+        description="List of available commands:",
+        color=0x00ff00
+    )
+    
+    help_embed.add_field(
+        name="!ping",
+        value="Check if the bot is running\n**Example:** `!ping`",
+        inline=False
+    )
+    
+    help_embed.add_field(
+        name="!analytic <asset> <interval>",
+        value="Perform technical analysis for a trading pair\n"
+              "• asset: Trading pair (default: BTC/USDT)\n"
+              "• interval: Timeframe (default: 15m)\n"
+              "**Example:** `!analytic BTC/USDT 1h`",
+        inline=False
+    )
+    
+    help_embed.add_field(
+        name="!signal <asset> <interval> <model>",
+        value="Basic trading signal\n"
+              "• asset: Trading pair (default: BTC/USDT)\n"
+              "• interval: Timeframe (default: 15m)\n"
+              "• model: AI model (default: deepseek/deepseek-chat-v3.1:free)\n"
+              "**Example:** `!signal ETH/USDT 30m`",
+        inline=False
+    )
+    
+    help_embed.add_field(
+        name="!asignal <asset> <interval> <model>",
+        value="Advanced trading signal\n"
+              "• asset: Trading pair (default: BTC/USDT)\n"
+              "• interval: Timeframe (default: 15m)\n"
+              "• model: AI model (default: deepseek/deepseek-chat-v3.1:free)\n"
+              "**Example:** `!asignal ADA/USDT 1h`",
+        inline=False
+    )
+    
+    help_embed.add_field(
+        name="!smcsignal <asset> <interval> <model>",
+        value="SMC (Smart Money Concept) trading signal\n"
+              "• asset: Trading pair (default: BTC/USDT)\n"
+              "• interval: Timeframe (default: 15m)\n"
+              "• model: AI model (default: deepseek/deepseek-chat-v3.1:free)\n"
+              "**Example:** `!smcsignal XRP/USDT 4h`",
+        inline=False
+    )
+    
+    help_embed.add_field(
+        name="!bothelp",
+        value="Display this guide\n**Example:** `!bothelp`",
+        inline=False
+    )
+    
+    # 👉 Add a dedicated "Examples" section
+    help_embed.add_field(
+        name="📌 Quick Examples",
+        value=(
+            "`!ping`\n"
+            "`!analytic BTC/USDT 1h`\n"
+            "`!signal ETH/USDT 30m`\n"
+            "`!asignal ADA/USDT 1h`\n"
+            "`!smcsignal XRP/USDT 4h`"
+        ),
+        inline=False
+    )
+    
+    help_embed.set_footer(text="📊 Trading Bot - Your trading assistant")
+    
+    await ctx.send(embed=help_embed)
+
+
+@bot.command()
 async def ping(ctx):
     await ctx.send("Pong! 🏓")
 
@@ -91,12 +169,29 @@ async def analytic(ctx, asset: str = "BTC/USDT", interval: str = "15m"):
         await ctx.send(f"❌ Error: {str(e)}")
 
 @bot.command()
-async def signal(ctx, asset: str = "BTC/USDT"):
+async def signal(ctx, asset: str = "BTC/USDT",interval: str = "15m", model: str = "deepseek/deepseek-chat-v3.1:free"):
     try:
-        response = get_trading_signal(asset)
+        response = get_trading_signal(asset,interval,model)
         await ctx.send(response)
     except Exception as e:
         await ctx.send(f"❌ Error: {str(e)}")
+
+@bot.command()
+async def asignal(ctx, asset: str = "BTC/USDT",interval: str = "15m",model: str = "deepseek/deepseek-chat-v3.1:free"):
+    try:
+        response = get_trading_signal_max(asset,interval,model)
+        await ctx.send(response)
+    except Exception as e:
+        await ctx.send(f"❌ Error: {str(e)}")
+
+@bot.command()
+async def smcsignal(ctx, asset: str = "BTC/USDT",interval: str = "15m",model: str = "deepseek/deepseek-chat-v3.1:free"):
+    try:
+        response = get_trading_signal_smc(asset,interval,model)
+        await ctx.send(response)
+    except Exception as e:
+        await ctx.send(f"❌ Error: {str(e)}")
+
 def run_flask():
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
 if __name__ == "__main__":

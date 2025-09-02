@@ -99,11 +99,10 @@ def get_technical_analysis(asset="BTC/USDT", interval="15m", is_signal=False):
     else:
         return response
 
-
-def get_trading_signal(asset="BTC/USDT"):
+def get_trading_signal(asset="BTC/USDT",interval: str = "15m", model="deepseek/deepseek-chat-v3.1:free"):
     try:
         # Get technical data
-        indicators = get_technical_analysis(asset, is_signal=True)
+        indicators = get_technical_analysis(asset,interval, is_signal=True)
         latest = indicators.iloc[-1]
         previous = indicators.iloc[-2]
         
@@ -139,7 +138,159 @@ Format for Discord with clear sections and relevant emojis.
                 "Content-Type": "application/json",
             },
             data=json.dumps({
-                "model": "deepseek/deepseek-chat-v3.1:free",
+                "model": model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a professional crypto trading analyst. Provide clear, actionable trading signals with specific levels and risk assessment. Use Discord formatting with emojis and bullet points. Be concise but informative."
+                    },
+                    {
+                        "role": "user",
+                        "content": technical_context
+                    }
+                ],
+                "temperature": 0.7,
+                "max_tokens": 600
+            })
+        )
+        response_data = response.json()
+        
+        # Check if choices exists in response
+        if 'choices' not in response_data:
+            return f"❌ Unexpected API response format: {response_data}"
+        
+        if not response_data['choices']:
+            return "❌ No response generated from AI"
+        
+        ai_response = response_data['choices'][0]['message']['content']
+        
+        # Format for Discord
+        return format_discord_signal(asset, ai_response, indicators)
+        
+    except Exception as e:
+        return f"❌ Error generating signal: {str(e)}"
+
+def get_trading_signal_max(asset="BTC/USDT",interval: str = "15m",model="deepseek/deepseek-chat-v3.1:free"):
+    try:
+        # Get technical data
+        indicators = get_technical_analysis(asset,interval, is_signal=True)
+        
+        # Prepare technical context
+        technical_context = f"""
+CRYPTO TRADING SIGNAL ANALYSIS FOR {asset.upper()}
+
+HERE IS DATA AND TECHNICAL INDICATORS:
+{indicators}
+
+Provide a trading signal with:
+1. Signal strength (Strong Buy/Buy/Neutral/Sell/Strong Sell)
+2. Entry price suggestion
+3. Stop-loss and take-profit levels
+4. Risk level (High/Medium/Low)
+5. Short-term outlook
+6. Key levels to watch
+
+Format for Discord with clear sections and relevant emojis.
+"""
+        
+        # Call AI API
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            data=json.dumps({
+                "model": model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a professional crypto trading analyst. Provide clear, actionable trading signals with specific levels and risk assessment. Use Discord formatting with emojis and bullet points. Be concise but informative."
+                    },
+                    {
+                        "role": "user",
+                        "content": technical_context
+                    }
+                ],
+                "temperature": 0.7,
+                "max_tokens": 600
+            })
+        )
+        response_data = response.json()
+        
+        # Check if choices exists in response
+        if 'choices' not in response_data:
+            return f"❌ Unexpected API response format: {response_data}"
+        
+        if not response_data['choices']:
+            return "❌ No response generated from AI"
+        
+        ai_response = response_data['choices'][0]['message']['content']
+        
+        # Format for Discord
+        return format_discord_signal(asset, ai_response, indicators)
+        
+    except Exception as e:
+        return f"❌ Error generating signal: {str(e)}"
+    
+def get_trading_signal_smc(asset="BTC/USDT",interval: str = "15m",model="deepseek/deepseek-chat-v3.1:free"):
+    try:
+        # Get technical data
+        indicators = get_technical_analysis(asset,interval, is_signal=True)
+        
+        # Prepare technical context
+        technical_context = f"""
+* Analyze the current market data for {asset} using Smart Money Concept (SMC) to identify the highest-probability buy or sell opportunity that maximizes potential wins. Leverage SMC principles such as liquidity zones, order blocks (prioritized), breaker blocks, and fair value gaps to pinpoint institutional activity. Avoid trading during periods of extreme volatility.
+
+* Incorporate the following additional rules to increase win probability:
+
+- Confirmation with Volume Analysis: Ensure SMC signals (e.g., liquidity sweep, order block retest, or fair value gap) are confirmed by volume exceeding the 20-period average by at least 50%.
+- Candlestick Patterns: Require confirmation from a bullish/bearish engulfing, pin bar, or inside bar at key SMC levels.
+- Confluence with Key Levels: Ensure the signal aligns with major support/resistance, Fibonacci 61.8% retracement, or the 50/200 EMA.
+
+* Provide the signal in this structured format:
+
+🔹 Signal Type: [🟢Buy/🔴Sell/No Signal]
+🔹 Entry Price: [Price]
+🔹 Stop-Loss: [Price]
+🔹 Take-Profit: [Price]
+🔹 Confidence Level: [Low/Medium/High]
+📌 Additional Notes: [Brief insight, e.g., 'Liquidity grab above recent high with volume spike' or 'Order block rejection confirmed by pin bar']
+
+* Rules for Signal Generation:
+
+- Prioritize the single most recent, high-confidence opportunity based on SMC principles, confirmed by clear institutional footprints (e.g., liquidity sweep reversing 1% within 3 candles, order block retest with volume and candlestick confirmation).
+- Set Stop-Loss and Take-Profit based on SMC structure: Stop-Loss below/above the nearest SMC level (e.g., order block base, breaker block, or liquidity zone), and Take-Profit at the next logical SMC target (e.g., opposing liquidity zone, fair value gap fill, or breaker block retest), adjustable based on market context.
+- Avoid multiple signals—focus on one actionable trade with the strongest setup.
+
+* Only generate a response if:
+- A new signal (Buy or Sell) differs from the previous signal (e.g., switches from Buy to Sell, Sell to Buy, or No Signal to Buy/Sell), or
+- No prior signal exists, and a valid Buy, Sell, or No Signal is identified.
+- If the current signal matches the previous signal, do not respond.
+- If no valid opportunity meets the criteria (e.g., extreme volatility, unclear SMC levels, or insufficient volume), respond only with:
+🔹 Signal Type: No Signal
+🔹 Reason: [Brief explanation, e.g., 'Extreme volatility detected' or 'No clear SMC setup with volume confirmation']
+
+* Important:
+
+- Do not include additional text or explanations outside the structured format.
+- If the signal is 'No Signal,' omit all other fields (e.g., Entry Price, Stop-Loss, Take-Profit, Confidence Level).
+- Ensure the response is concise, data-driven, and adheres strictly to the format.
+- Track the previous signal internally to compare with the current analysis, responding only when a change occurs or it’s the first signal.
+HERE IS DATA {asset}:
+{indicators}
+
+"""
+        
+        # Call AI API
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            data=json.dumps({
+                "model": model,
                 "messages": [
                     {
                         "role": "system",
