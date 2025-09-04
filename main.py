@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from config import TOKEN
 from services.analytic import get_technical_analysis, get_trading_signal,get_trading_signal_max, get_trading_signal_smc
+from services.supertrend import get_advanced_trading_signal,get_advanced_trading_signal_ai
 from flask import Flask, jsonify
 import threading
 import time
@@ -192,6 +193,20 @@ async def smcsignal(ctx, asset: str = "BTC/USDT",interval: str = "15m",model: st
     except Exception as e:
         await ctx.send(f"❌ Error: {str(e)}")
 
+@bot.command()
+async def trendsignal(ctx, asset: str = "BTC/USDT",interval: str = "15m",model: str = "deepseek/deepseek-chat-v3.1:free"):
+    try:
+        response = get_advanced_trading_signal(asset,interval,model)
+        await ctx.send(response)
+    except Exception as e:
+        await ctx.send(f"❌ Error: {str(e)}")
+@bot.command()
+async def aitrendsignal(ctx, asset: str = "BTC/USDT",interval: str = "15m",model: str = "deepseek/deepseek-chat-v3.1:free"):
+    try:
+        response = get_advanced_trading_signal_ai(asset,interval,model)
+        await ctx.send(response)
+    except Exception as e:
+        await ctx.send(f"❌ Error: {str(e)}")
 def run_flask():
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
 if __name__ == "__main__":
